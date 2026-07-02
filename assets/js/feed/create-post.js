@@ -1,0 +1,1 @@
+export async function createPost(content){return fetch('/api/posts',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${localStorage.getItem('aqora_token')}`},body:JSON.stringify({content})})}

@@ -1,0 +1,1 @@
+export async function searchReels(q){return fetch(`/api/search?q=${encodeURIComponent(q)}&type=reel`).then(r=>r.json())}

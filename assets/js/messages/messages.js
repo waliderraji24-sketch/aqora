@@ -1,0 +1,1 @@
+export async function fetchMessages(conversationId){return fetch(`/api/chat?conversationId=${conversationId}`).then(r=>r.json())}

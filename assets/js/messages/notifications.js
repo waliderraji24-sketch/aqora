@@ -1,0 +1,1 @@
+export async function loadNotifications(){return fetch('/api/notifications',{headers:{Authorization:`Bearer ${localStorage.getItem('aqora_token')}`}}).then(r=>r.json())}

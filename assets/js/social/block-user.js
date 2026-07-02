@@ -1,0 +1,1 @@
+export async function blockUser(id){console.log('block',id)}

@@ -1,0 +1,1 @@
+export function toast(msg){console.log('toast',msg)}

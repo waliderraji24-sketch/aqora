@@ -1,0 +1,1 @@
+export async function saveProfile(data){return fetch('/api/users', {method:'POST', body: JSON.stringify(data)})}

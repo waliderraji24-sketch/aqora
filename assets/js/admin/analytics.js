@@ -1,0 +1,1 @@
+export async function loadAnalytics(){return fetch('/api/analytics').then(r=>r.json())}

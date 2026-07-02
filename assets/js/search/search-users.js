@@ -1,0 +1,1 @@
+export async function searchUsers(q){return fetch(`/api/search?q=${encodeURIComponent(q)}&type=user`).then(r=>r.json())}

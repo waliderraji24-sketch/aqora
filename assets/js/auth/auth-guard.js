@@ -1,0 +1,1 @@
+export function requireAuth(){if(!localStorage.getItem('aqora_token')){location.href='/login'}}

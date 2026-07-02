@@ -1,0 +1,1 @@
+export async function createStory(data){console.log('create story',data)}

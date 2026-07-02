@@ -1,0 +1,1 @@
+export async function commentReel(id,content){console.log('comment reel',id,content)}

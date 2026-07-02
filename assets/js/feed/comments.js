@@ -1,0 +1,2 @@
+export async function fetchComments(postId){return fetch(`/api/comments?postId=${postId}`).then(r=>r.json())}
+export async function addComment(postId,content){return fetch('/api/comments',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${localStorage.getItem('aqora_token')}`},body:JSON.stringify({postId,content})})}

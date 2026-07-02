@@ -1,0 +1,1 @@
+export function isNotEmpty(s){return typeof s==='string'&&s.trim().length>0}

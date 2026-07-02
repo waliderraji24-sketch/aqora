@@ -1,0 +1,1 @@
+export async function fetchPosts(){return fetch('/api/posts').then(r=>r.json())}

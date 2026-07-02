@@ -1,0 +1,1 @@
+export function logout(){localStorage.removeItem('aqora_token');location.href='/login'}

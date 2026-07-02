@@ -1,0 +1,1 @@
+export async function getFollowing(userId){return fetch(`/api/follow?targetId=${userId}`).then(r=>r.json())}

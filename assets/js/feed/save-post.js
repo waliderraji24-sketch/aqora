@@ -1,0 +1,1 @@
+export async function savePost(postId){console.log('save',postId)}

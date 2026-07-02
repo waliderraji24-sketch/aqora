@@ -1,0 +1,1 @@
+export async function register(data){console.log('register',data);return {ok:true}}

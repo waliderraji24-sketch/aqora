@@ -1,0 +1,1 @@
+export async function sharePost(postId){console.log('share',postId)}

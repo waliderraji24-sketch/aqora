@@ -1,0 +1,1 @@
+// Firebase Authentication helper placeholder

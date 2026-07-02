@@ -1,0 +1,1 @@
+export async function loadProfile(userId){return fetch(`/api/users?id=${userId}`).then(r=>r.json())}

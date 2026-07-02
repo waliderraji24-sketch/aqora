@@ -1,0 +1,1 @@
+export async function resetPassword(email){console.log('reset',email);return {ok:true}}

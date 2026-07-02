@@ -1,0 +1,1 @@
+export const ROUTES={HOME:'/',FEED:'/feed',CHAT:'/chat',REELS:'/reels'}

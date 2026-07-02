@@ -1,0 +1,1 @@
+export async function sendMessage(conversationId,content){return fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${localStorage.getItem('aqora_token')}`},body:JSON.stringify({conversationId,content})})}

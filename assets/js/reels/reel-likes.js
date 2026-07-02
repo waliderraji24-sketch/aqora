@@ -1,0 +1,1 @@
+export async function likeReel(id){console.log('like reel',id)}

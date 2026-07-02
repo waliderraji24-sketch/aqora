@@ -1,0 +1,1 @@
+export async function loadDashboard(){return {users:0,posts:0}}

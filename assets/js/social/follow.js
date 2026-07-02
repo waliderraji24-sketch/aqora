@@ -1,0 +1,1 @@
+export async function followUser(id){return fetch('/api/follow',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${localStorage.getItem('aqora_token')}`},body:JSON.stringify({targetId:id,action:'follow'})})}

@@ -1,0 +1,2 @@
+/* Responsive tweaks */
+@media (max-width:768px){.container{padding:12px}.admin-grid{grid-template-columns:1fr}}

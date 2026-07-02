@@ -1,0 +1,1 @@
+export async function listUsers(){return fetch('/api/users').then(r=>r.json())}
