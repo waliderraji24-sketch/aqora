@@ -2,68 +2,130 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Card from '../../components/Card';
+import { loginUser, saveSession } from '../../lib/auth';
+import { isFirebaseAvailable, signInWithGoogle } from '../../lib/firebase';
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
+    setLoading(true);
 
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.message || 'فشل تسجيل الدخول');
-      return;
+    try {
+      (async () => {
+        if (isFirebaseAvailable()) {
+          try {
+            const res = await (await import('../../lib/firebase')).signInWithEmailPassword(email, password);
+            saveSession(res.user, res.token);
+            router.push('/dashboard');
+            return;
+          } catch (e) {
+            // fall back to local
+          }
+        }
+        const result = loginUser(email, password);
+        saveSession(result.user, result.token);
+        router.push('/dashboard');
+      })();
+    } catch (e) {
+      if (e instanceof Error) setError(e.message);
+      else setError('حدث خطأ أثناء تسجيل الدخول');
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const data = await res.json();
-    localStorage.setItem('aqora_token', data.token);
-    router.push('/feed');
-  }
+  const handleGoogle = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      if (!isFirebaseAvailable()) throw new Error('Firebase not configured');
+      const result = await signInWithGoogle();
+      saveSession(result.user, result.token);
+      router.push('/dashboard');
+    } catch (e) {
+      if (e instanceof Error) setError(e.message);
+      else setError('فشل تسجيل الدخول عبر Google');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="mx-auto max-w-2xl py-12">
-      <Card>
-        <h1 className="text-3xl font-semibold text-white">تسجيل الدخول</h1>
-        <p className="mt-3 text-slate-400">استخدم حسابك للانتقال إلى Feed و Chat و Reels.</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-orange-50 px-4">
+      <div className="w-full max-w-md rounded-[2rem] border border-orange-200 bg-white p-8 shadow-xl shadow-orange-100">
+        <h1 className="text-4xl font-bold text-orange-600 text-center">تسجيل الدخول</h1>
+        <p className="mt-3 text-center text-gray-600">أدخل بياناتك للدخول إلى AQORA.</p>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-          <label className="block">
-            <span className="text-sm text-slate-300">البريد الإلكتروني</span>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="email">
+              البريد الإلكتروني
+            </label>
             <input
+              id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="example@domain.com"
+              className="w-full rounded-3xl border border-orange-200 bg-orange-50 px-4 py-3 text-gray-900 focus:border-orange-400 focus:outline-none"
               required
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-brand-500"
             />
-          </label>
-          <label className="block">
-            <span className="text-sm text-slate-300">كلمة المرور</span>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="password">
+              كلمة المرور
+            </label>
             <input
+              id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full rounded-3xl border border-orange-200 bg-orange-50 px-4 py-3 text-gray-900 focus:border-orange-400 focus:outline-none"
               required
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-brand-500"
+              minLength={6}
             />
-          </label>
-          {error ? <p className="text-sm text-rose-400">{error}</p> : null}
-          <button className="w-full rounded-2xl bg-brand-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-700">
-            تسجيل الدخول
+          </div>
+
+          {error ? <div className="rounded-2xl bg-red-100 p-3 text-sm text-red-700">{error}</div> : null}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-full bg-orange-600 px-6 py-3 text-white font-semibold transition hover:bg-orange-700 disabled:opacity-60"
+          >
+            {loading ? 'جارٍ تسجيل الدخول...' : 'دخول'}
           </button>
         </form>
-      </Card>
+
+        <div className="mt-6 text-center text-sm text-gray-600">
+          ليس لديك حساب؟{' '}
+          <button
+            type="button"
+            onClick={() => router.push('/register')}
+            className="font-semibold text-orange-600 hover:text-orange-700"
+          >
+            أنشئ حساب
+          </button>
+        </div>
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={handleGoogle}
+            className="mt-3 inline-flex items-center gap-3 rounded-full border px-6 py-3 text-sm font-semibold"
+          >
+            <span>تسجيل عبر Google</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

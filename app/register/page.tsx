@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Card from '../../components/Card';
+import { registerUser, saveSession } from '../../lib/auth';
+import { isFirebaseAvailable, signInWithGoogle } from '../../lib/firebase';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -10,71 +11,131 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
+    setLoading(true);
 
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password }),
-    });
-
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.message || 'فشل إنشاء الحساب');
-      return;
+    try {
+      (async () => {
+        if (isFirebaseAvailable()) {
+          try {
+            const res = await (await import('../../lib/firebase')).signUpWithEmail(email, password);
+            // save display name in firestore users collection
+            try {
+              const id = email.replace(/[@.]/g, '_');
+              await (await import('../../lib/firebase')).saveDocument('users', id, { name, email: res.user.email, joinedAt: res.user.joinedAt });
+            } catch {}
+            saveSession(res.user, res.token);
+            router.push('/dashboard');
+            return;
+          } catch (e) {
+            // fall back to local register
+          }
+        }
+        const result = registerUser(name, email, password);
+        saveSession(result.user, result.token);
+        router.push('/dashboard');
+      })();
+    } catch (e) {
+      if (e instanceof Error) setError(e.message);
+      else setError('حدث خطأ أثناء التسجيل');
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const data = await res.json();
-    localStorage.setItem('aqora_token', data.token);
-    router.push('/feed');
-  }
+  const handleGoogle = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      if (!isFirebaseAvailable()) throw new Error('Firebase not configured');
+      const result = await signInWithGoogle();
+      saveSession(result.user, result.token);
+      router.push('/dashboard');
+    } catch (e) {
+      if (e instanceof Error) setError(e.message);
+      else setError('فشل تسجيل الدخول عبر Google');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="mx-auto max-w-2xl py-12">
-      <Card>
-        <h1 className="text-3xl font-semibold text-white">إنشاء حساب جديد</h1>
-        <p className="mt-3 text-slate-400">ابدأ تجربتك على AQORA اليوم.</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-orange-50 px-4">
+      <div className="w-full max-w-md rounded-[2rem] border border-orange-200 bg-white p-8 shadow-xl shadow-orange-100">
+        <h1 className="text-4xl font-bold text-orange-600 text-center">إنشاء حساب</h1>
+        <p className="mt-3 text-center text-gray-600">أنشئ حساباً فعلياً لتستعمل التطبيق.</p>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-          <label className="block">
-            <span className="text-sm text-slate-300">الاسم الكامل</span>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="name">
+              الاسم الكامل
+            </label>
             <input
+              id="name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              placeholder="أدخل اسمك"
+              className="w-full rounded-3xl border border-orange-200 bg-orange-50 px-4 py-3 text-gray-900 focus:border-orange-400 focus:outline-none"
               required
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-brand-500"
             />
-          </label>
-          <label className="block">
-            <span className="text-sm text-slate-300">البريد الإلكتروني</span>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="email">
+              البريد الإلكتروني
+            </label>
             <input
+              id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="example@domain.com"
+              className="w-full rounded-3xl border border-orange-200 bg-orange-50 px-4 py-3 text-gray-900 focus:border-orange-400 focus:outline-none"
               required
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-brand-500"
             />
-          </label>
-          <label className="block">
-            <span className="text-sm text-slate-300">كلمة المرور</span>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="password">
+              كلمة المرور
+            </label>
             <input
+              id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full rounded-3xl border border-orange-200 bg-orange-50 px-4 py-3 text-gray-900 focus:border-orange-400 focus:outline-none"
               required
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-brand-500"
+              minLength={6}
             />
-          </label>
-          {error ? <p className="text-sm text-rose-400">{error}</p> : null}
-          <button className="w-full rounded-2xl bg-brand-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-700">
-            إنشاء الحساب
+          </div>
+
+          {error ? <div className="rounded-2xl bg-red-100 p-3 text-sm text-red-700">{error}</div> : null}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-full bg-orange-600 px-6 py-3 text-white font-semibold transition hover:bg-orange-700 disabled:opacity-60"
+          >
+            {loading ? 'جارٍ إنشاء الحساب...' : 'إنشاء حساب'}
           </button>
         </form>
-      </Card>
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={handleGoogle}
+            className="mt-3 inline-flex items-center gap-3 rounded-full border px-6 py-3 text-sm font-semibold"
+          >
+            <span>التسجيل عبر Google</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

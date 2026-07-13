@@ -1,241 +1,200 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import Card from '../../components/Card';
-
-type Message = {
-  id: string;
-  conversationId: string;
-  senderId: string;
-  senderName: string;
-  content: string;
-  createdAt: string;
-};
-
-type Conversation = {
-  id: string;
-  participants: string[];
-  lastMessage?: string;
-  updatedAt?: string;
-};
+import BottomNav from '../../components/BottomNav';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  addChatMessage,
+  getStoredConversations,
+  updateConversationLastMessage,
+  Conversation,
+  ChatMessage,
+} from '../../lib/data';
+import { isFirebaseAvailable, getCollection } from '../../lib/firebase';
+import { getSession } from '../../lib/auth';
 
 export default function ChatPage() {
+  const [authorized, setAuthorized] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [messageInput, setMessageInput] = useState('');
-  const [newRecipientId, setNewRecipientId] = useState('');
-  const [statusMessage, setStatusMessage] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [selectedId, setSelectedId] = useState('');
+  const [message, setMessage] = useState('');
+  const [callStatus, setCallStatus] = useState('');
+  const [callId, setCallId] = useState<string | null>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const router = useRouter();
 
-  // محاكاة للمحادثات (في الإنتاج ستأتي من API)
   useEffect(() => {
-    const mockConversations: Conversation[] = [
-      {
-        id: 'conv-1',
-        participants: ['user-1', 'user-2'],
-        lastMessage: 'مرحباً بك في AQORA!',
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'conv-2',
-        participants: ['user-1', 'user-3'],
-        lastMessage: 'كيف حالك؟',
-        updatedAt: new Date().toISOString(),
-      },
-    ];
-    setConversations(mockConversations);
-  }, []);
-
-  // جلب الرسائل عند تحديد محادثة
-  useEffect(() => {
-    if (!selectedConversation) return;
-
-    async function fetchMessages() {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/chat?conversationId=${selectedConversation}`);
-        if (res.ok) {
-          const data = await res.json();
-          setMessages(data.messages || []);
+    const session = getSession();
+    if (!session) {
+      router.push('/');
+      return;
+    }
+    setAuthorized(true);
+    let unsub: (() => void) | null = null;
+    async function init() {
+      if (isFirebaseAvailable()) {
+        try {
+          const fb = await import('../../lib/firebase');
+          unsub = fb.listenCollection('conversations', (docs: any[]) => {
+            setConversations(docs as Conversation[]);
+            setSelectedId((docs as any)[0]?.id ?? '');
+          });
+          // show local until remote resolves
+          const stored = getStoredConversations();
+          setConversations(stored);
+          setSelectedId(stored[0]?.id ?? '');
+          return;
+        } catch (e) {
+          console.warn('Failed to load conversations from Firestore', e);
         }
-      } catch (error) {
-        console.error('فشل جلب الرسائل:', error);
       }
-      setLoading(false);
+      const stored = getStoredConversations();
+      setConversations(stored);
+      setSelectedId(stored[0]?.id ?? '');
     }
-
-    fetchMessages();
-  }, [selectedConversation]);
-
-  // إرسال رسالة جديدة
-  async function sendMessage() {
-    if (!selectedConversation || !messageInput.trim()) {
-      setStatusMessage('الرجاء اختيار محادثة وكتابة رسالة');
-      return;
-    }
-
-    const token = localStorage.getItem('aqora_token');
-    if (!token) {
-      setStatusMessage('يجب تسجيل الدخول أولاً');
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          conversationId: selectedConversation,
-          content: messageInput,
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setMessages([...messages, data.message]);
-        setMessageInput('');
-        setStatusMessage('تم إرسال الرسالة');
-      } else {
-        setStatusMessage('فشل إرسال الرسالة');
-      }
-    } catch (error) {
-      console.error('خطأ في الإرسال:', error);
-      setStatusMessage('حدث خطأ أثناء الإرسال');
-    }
-  }
-
-  // بدء محادثة جديدة
-  async function startNewConversation() {
-    if (!newRecipientId.trim()) {
-      setStatusMessage('الرجاء إدخال معرف المستقبل');
-      return;
-    }
-
-    const newConvId = `conv-${Date.now()}`;
-    const newConv: Conversation = {
-      id: newConvId,
-      participants: ['user-current', newRecipientId],
-      updatedAt: new Date().toISOString(),
+    init();
+    return () => {
+      if (unsub) unsub();
     };
-    setConversations([newConv, ...conversations]);
-    setSelectedConversation(newConvId);
-    setNewRecipientId('');
-    setMessages([]);
-    setStatusMessage('تم بدء محادثة جديدة');
+  }, [router]);
+
+  const selectedConv = conversations.find((conv) => conv.id === selectedId);
+
+  const handleSend = async () => {
+    if (!message.trim() || !selectedId) return;
+    const now = new Date();
+    const time = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    const nextMessage: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      sender: 'me',
+      text: message.trim(),
+      time,
+    };
+
+    const updated = await addChatMessage(selectedId, nextMessage);
+    const updatedSummary = await updateConversationLastMessage(selectedId, message.trim(), time);
+    setConversations((updatedSummary as Conversation[]) || (updated as Conversation[]));
+    setMessage('');
+  };
+
+  const handleCall = () => {
+    (async () => {
+      if (!selectedConv) return;
+      if (!isFirebaseAvailable()) {
+        setCallStatus(`جاري الاتصال بـ ${selectedConv.name}... (محلي)`);
+        setTimeout(() => {
+          setCallStatus(`تم الاتصال بـ ${selectedConv.name}`);
+          setTimeout(() => setCallStatus(''), 3000);
+        }, 1500);
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        setLocalStream(stream);
+        const id = `call-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        setCallId(id);
+        setCallStatus('جاري إنشاء المكالمة...');
+        const webrtc = await import('../../lib/webrtc');
+        const { pc, remoteStream } = await webrtc.startCallFirestore(id, stream, (s: MediaStream) => setRemoteStream(s));
+        setCallStatus('تم إنشاء المكالمة، بانتظار الإجابة...');
+      } catch (e) {
+        console.error(e);
+        setCallStatus('فشل بدء المكالمة');
+        setTimeout(() => setCallStatus(''), 3000);
+      }
+    })();
+  };
+
+  if (!authorized) {
+    return <div className="min-h-screen flex items-center justify-center text-gray-900">جارٍ التحقق...</div>;
   }
 
   return (
-    <div className="space-y-6 py-6">
-      <Card>
-        <h1 className="text-2xl font-semibold text-white">الدردشة</h1>
-        <p className="mt-2 text-sm text-slate-400">ابدأ المحادثات مع الأصدقاء والمجتمع.</p>
-      </Card>
-
-      {statusMessage && (
-        <div className="rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">
-          {statusMessage}
-        </div>
-      )}
-
-      <div className="grid gap-6 md:grid-cols-3">
-        {/* قائمة المحادثات */}
-        <div className="md:col-span-1 space-y-4">
-          <Card>
-            <h2 className="text-lg font-semibold text-white">المحادثات</h2>
-            <div className="mt-4 space-y-3">
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  value={newRecipientId}
-                  onChange={(e) => setNewRecipientId(e.target.value)}
-                  placeholder="معرف المستقبل..."
-                  className="w-full rounded-3xl border border-slate-800 bg-slate-950 p-3 text-slate-100 outline-none focus:border-brand-500"
-                />
-                <button
-                  onClick={startNewConversation}
-                  className="w-full rounded-full bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
-                >
-                  محادثة جديدة
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                {conversations.length === 0 ? (
-                  <p className="text-slate-400 text-sm">لا توجد محادثات بعد</p>
-                ) : (
-                  conversations.map((conv) => (
-                    <button
-                      key={conv.id}
-                      onClick={() => setSelectedConversation(conv.id)}
-                      className={`w-full rounded-3xl border p-3 text-left transition ${
-                        selectedConversation === conv.id
-                          ? 'border-brand-500 bg-brand-500/10'
-                          : 'border-slate-800 hover:border-slate-700'
-                      }`}
-                    >
-                      <p className="text-sm font-semibold text-white">
-                        {conv.participants.join(', ')}
-                      </p>
-                      <p className="mt-1 truncate text-xs text-slate-400">
-                        {conv.lastMessage || 'لا توجد رسائل'}
-                      </p>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-          </Card>
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 p-4 pb-28">
+      <div className="max-w-6xl mx-auto grid gap-4 lg:grid-cols-[280px_1fr]">
+        <div className="rounded-[2rem] border border-orange-200 bg-white shadow-sm overflow-hidden">
+          <div className="bg-orange-600 p-5 text-white">
+            <h2 className="text-xl font-bold">المحادثات</h2>
+          </div>
+          <div className="space-y-3 p-5">
+            {conversations.map((conv) => (
+              <button
+                key={conv.id}
+                onClick={() => setSelectedId(conv.id)}
+                className={`w-full rounded-3xl border p-4 text-right transition ${
+                  selectedId === conv.id
+                    ? 'border-orange-400 bg-orange-50'
+                    : 'border-orange-200 hover:bg-orange-50'
+                }`}
+              >
+                <div className="font-semibold text-gray-900">{conv.name}</div>
+                <div className="text-xs text-gray-500">{conv.lastMessage}</div>
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* نافذة الرسائل */}
-        <div className="md:col-span-2">
-          {selectedConversation ? (
-            <div className="flex flex-col rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-soft" style={{ minHeight: '500px' }}>
-              <div className="flex-1 space-y-4 overflow-y-auto mb-4">
-                {loading ? (
-                  <p className="text-center text-slate-400">جاري تحميل الرسائل...</p>
-                ) : messages.length === 0 ? (
-                  <p className="text-center text-slate-400 text-sm">لا توجد رسائل بعد. ابدأ المحادثة!</p>
-                ) : (
-                  messages.map((msg) => (
-                    <div key={msg.id} className="rounded-3xl bg-slate-950 p-4">
-                      <p className="text-sm font-semibold text-white">{msg.senderName}</p>
-                      <p className="mt-2 text-slate-300">{msg.content}</p>
-                      <p className="mt-2 text-xs text-slate-500">
-                        {new Date(msg.createdAt).toLocaleString('ar-EG')}
-                      </p>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <div className="space-y-3 border-t border-slate-800 pt-4">
-                <textarea
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
-                  rows={3}
-                  placeholder="اكتب رسالة..."
-                  className="w-full rounded-3xl border border-slate-800 bg-slate-950 p-4 text-slate-100 outline-none focus:border-brand-500"
-                />
-                <button
-                  onClick={sendMessage}
-                  className="w-full rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700"
-                >
-                  إرسال
-                </button>
-              </div>
+        <div className="rounded-[2rem] border border-orange-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between border-b border-orange-100 bg-white p-5">
+            <div className="text-right">
+              <div className="text-lg font-bold text-gray-900">{selectedConv?.name ?? 'المحادثة'}</div>
+              <div className="text-xs text-gray-500">آخر تحديث {selectedConv?.time}</div>
             </div>
-          ) : (
-            <Card>
-              <p className="text-center text-slate-400">اختر محادثة أو ابدأ محادثة جديدة</p>
-            </Card>
-          )}
+            <button
+              onClick={handleCall}
+              className="rounded-full bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
+            >
+              اتصال
+            </button>
+          </div>
+          {callStatus ? (
+            <div className="border-t border-orange-100 bg-green-50 px-5 py-3 text-sm text-green-800">{callStatus}</div>
+          ) : null}
+
+          {remoteStream ? (
+            <div className="p-5">
+              <div className="text-sm font-semibold text-gray-700 mb-2 text-right">مكالمة حالية</div>
+              <video className="w-full rounded-lg" autoPlay playsInline ref={(el) => { if (el && remoteStream) el.srcObject = remoteStream; }} />
+            </div>
+          ) : null}
+
+          <div className="space-y-4 bg-slate-50 p-5 min-h-[360px]">
+            {selectedConv?.messages.map((msg) => (
+              <div key={msg.id} className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  className={`max-w-xs rounded-3xl px-4 py-3 shadow-sm ${
+                    msg.sender === 'me' ? 'bg-orange-600 text-white rounded-br-none' : 'bg-white text-gray-900 rounded-bl-none'
+                  }`}
+                >
+                  <p className="text-sm">{msg.text}</p>
+                  <div className="mt-2 text-[10px] text-gray-400 text-right">{msg.time}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t border-orange-100 bg-white p-5">
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="اكتب رسالة..."
+                className="flex-1 rounded-full border border-orange-200 bg-orange-50 px-4 py-3 text-gray-900 focus:outline-none focus:border-orange-500"
+              />
+              <button
+                type="button"
+                onClick={handleSend}
+                className="rounded-full bg-orange-600 px-6 py-3 text-white font-semibold hover:bg-orange-700"
+              >
+                إرسال
+              </button>
+            </div>
+          </div>
         </div>
       </div>
+      <BottomNav />
     </div>
   );
 }

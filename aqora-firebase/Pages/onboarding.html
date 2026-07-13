@@ -1,0 +1,221 @@
+<section class="card onboarding-card">
+  <div class="progress-bar">
+    <div class="progress-fill" style="width: 0%"></div>
+  </div>
+  
+  <div class="step-counter">
+    <span>Step <strong class="current-step">1</strong> of <strong>9</strong></span>
+    <button class="button button-ghost button-sm" onclick="skipOnboarding()">Skip</button>
+  </div>
+
+  <div id="onboarding-step-1" class="onboarding-step">
+    <h2>Welcome to AQORA 🚀</h2>
+    <p>We're excited to have you here. Let's set up your profile and get you connected with amazing creators.</p>
+    <div class="step-actions">
+      <button class="button button-primary" onclick="nextStep()">Get Started</button>
+    </div>
+  </div>
+
+  <div id="onboarding-step-2" class="onboarding-step hidden">
+    <h2>Create Your Username</h2>
+    <p>Choose a unique username that represents you on AQORA.</p>
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <input type="text" id="onboarding-username" class="form-input" placeholder="e.g., creative_minds" required>
+    </div>
+    <div class="step-actions">
+      <button class="button button-ghost" onclick="prevStep()">Back</button>
+      <button class="button button-primary" onclick="nextStep()">Next</button>
+    </div>
+  </div>
+
+  <div id="onboarding-step-3" class="onboarding-step hidden">
+    <h2>Tell Us About Yourself</h2>
+    <p>Help others get to know you better.</p>
+    <div class="form-group">
+      <label class="form-label">Full Name</label>
+      <input type="text" id="onboarding-fullname" class="form-input" placeholder="Your full name" required>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Bio (Optional)</label>
+      <textarea id="onboarding-bio" class="form-textarea" placeholder="Tell us about yourself..."></textarea>
+    </div>
+    <div class="step-actions">
+      <button class="button button-ghost" onclick="prevStep()">Back</button>
+      <button class="button button-primary" onclick="nextStep()">Next</button>
+    </div>
+  </div>
+
+  <div id="onboarding-step-4" class="onboarding-step hidden">
+    <h2>What's Your Profession?</h2>
+    <p>Let people know what you do.</p>
+    <div class="form-group">
+      <label class="form-label">Profession</label>
+      <input type="text" id="onboarding-profession" class="form-input" placeholder="e.g., Content Creator, Designer, Developer" required>
+    </div>
+    <div class="step-actions">
+      <button class="button button-ghost" onclick="prevStep()">Back</button>
+      <button class="button button-primary" onclick="nextStep()">Next</button>
+    </div>
+  </div>
+
+  <div id="onboarding-step-5" class="onboarding-step hidden">
+    <h2>Choose Your Interests</h2>
+    <p>Select topics you're interested in to personalize your feed.</p>
+    <div class="interests-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px;">
+      <label style="display: flex; align-items: center; gap: 8px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; cursor: pointer;">
+        <input type="checkbox" value="design" class="onboarding-interest">
+        <span>Design</span>
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; cursor: pointer;">
+        <input type="checkbox" value="technology" class="onboarding-interest">
+        <span>Technology</span>
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; cursor: pointer;">
+        <input type="checkbox" value="business" class="onboarding-interest">
+        <span>Business</span>
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; cursor: pointer;">
+        <input type="checkbox" value="creativity" class="onboarding-interest">
+        <span>Creativity</span>
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; cursor: pointer;">
+        <input type="checkbox" value="marketing" class="onboarding-interest">
+        <span>Marketing</span>
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; cursor: pointer;">
+        <input type="checkbox" value="lifestyle" class="onboarding-interest">
+        <span>Lifestyle</span>
+      </label>
+    </div>
+    <div class="step-actions">
+      <button class="button button-ghost" onclick="prevStep()">Back</button>
+      <button class="button button-primary" onclick="nextStep()">Next</button>
+    </div>
+  </div>
+
+  <div id="onboarding-step-6" class="onboarding-step hidden">
+    <h2>Upload Profile Picture</h2>
+    <p>Add a profile picture to personalize your account.</p>
+    <div style="display: flex; justify-content: center; margin: 32px 0;">
+      <div style="width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--info)); display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem; cursor: pointer;" onclick="document.getElementById('profile-pic-input').click()">
+        📷
+      </div>
+    </div>
+    <input type="file" id="profile-pic-input" class="hidden" accept="image/*">
+    <div class="step-actions">
+      <button class="button button-ghost" onclick="prevStep()">Back</button>
+      <button class="button button-primary" onclick="nextStep()">Next</button>
+    </div>
+  </div>
+
+  <div id="onboarding-step-7" class="onboarding-step hidden">
+    <h2>Privacy Settings</h2>
+    <p>Choose how you want to interact on AQORA.</p>
+    <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+      <label style="display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; cursor: pointer;">
+        <input type="radio" name="privacy" value="public" checked style="width: 16px; height: 16px; cursor: pointer;">
+        <span>
+          <strong>Public Profile</strong>
+          <p style="font-size: 0.8rem; color: var(--text-tertiary); margin-top: 4px; margin-bottom: 0;">Anyone can see your profile and posts</p>
+        </span>
+      </label>
+      <label style="display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; cursor: pointer;">
+        <input type="radio" name="privacy" value="private" style="width: 16px; height: 16px; cursor: pointer;">
+        <span>
+          <strong>Private Profile</strong>
+          <p style="font-size: 0.8rem; color: var(--text-tertiary); margin-top: 4px; margin-bottom: 0;">Only approved followers can see your posts</p>
+        </span>
+      </label>
+    </div>
+    <div class="step-actions">
+      <button class="button button-ghost" onclick="prevStep()">Back</button>
+      <button class="button button-primary" onclick="nextStep()">Next</button>
+    </div>
+  </div>
+
+  <div id="onboarding-step-8" class="onboarding-step hidden">
+    <h2>Suggested Creators to Follow</h2>
+    <p>Get started by following these amazing creators.</p>
+    <div id="suggested-creators" style="display: grid; gap: 12px; margin-bottom: 24px;">
+      <!-- Populated by JavaScript -->
+    </div>
+    <div class="step-actions">
+      <button class="button button-ghost" onclick="prevStep()">Back</button>
+      <button class="button button-primary" onclick="nextStep()">Next</button>
+    </div>
+  </div>
+
+  <div id="onboarding-step-9" class="onboarding-step hidden">
+    <h2>You're All Set! 🎉</h2>
+    <p>Your AQORA profile is ready. Let's explore and connect with amazing people.</p>
+    <div style="text-align: center; margin: 32px 0;">
+      <div style="width: 80px; height: 80px; margin: 0 auto 16px; background: linear-gradient(135deg, var(--success), var(--info)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem;">
+        ✨
+      </div>
+    </div>
+    <div class="step-actions">
+      <button class="button button-primary" style="width: 100%;" onclick="completeOnboarding()">Enter AQORA</button>
+    </div>
+  </div>
+</section>
+
+<script>
+let currentStep = 1;
+const totalSteps = 9;
+
+function showStep(step) {
+  document.querySelectorAll('.onboarding-step').forEach(el => {
+    el.classList.add('hidden');
+  });
+  
+  document.getElementById(`onboarding-step-${step}`).classList.remove('hidden');
+  
+  const progress = (step / totalSteps) * 100;
+  document.querySelector('.progress-fill').style.width = progress + '%';
+  
+  document.querySelector('.current-step').textContent = step;
+  
+  window.scrollTo(0, 0);
+}
+
+function nextStep() {
+  if (currentStep < totalSteps) {
+    currentStep++;
+    showStep(currentStep);
+  }
+}
+
+function prevStep() {
+  if (currentStep > 1) {
+    currentStep--;
+    showStep(currentStep);
+  }
+}
+
+function skipOnboarding() {
+  if (confirm('Are you sure? You can set these up later.')) {
+    completeOnboarding();
+  }
+}
+
+async function completeOnboarding() {
+  const onboardingData = {
+    username: document.getElementById('onboarding-username')?.value || '',
+    displayName: document.getElementById('onboarding-fullname')?.value || '',
+    bio: document.getElementById('onboarding-bio')?.value || '',
+    profession: document.getElementById('onboarding-profession')?.value || '',
+    interests: Array.from(document.querySelectorAll('.onboarding-interest:checked')).map(cb => cb.value),
+    privacySetting: document.querySelector('input[name="privacy"]:checked')?.value || 'public',
+    completedOnboarding: true
+  };
+  
+  try {
+    window.dispatchEvent(new CustomEvent('onboarding-complete', { detail: onboardingData }));
+  } catch (error) {
+    console.error('Error completing onboarding:', error);
+  }
+}
+
+showStep(1);
+</script>

@@ -1,11 +1,11 @@
 // Firebase configuration placeholder
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyDJDDpkxzTrl9pbzScQy7mRFbO0kWTvhZw",
+  authDomain: "aqora-28595165-beb5f.firebaseapp.com",
+  projectId: "aqora-28595165-beb5f",
+  storageBucket: "aqora-28595165-beb5f.firebasestorage.app",
+  messagingSenderId: "168023435195",
+  appId: "1:168023435195:web:71362611b25e8219a4869e",
 };
 
 export default firebaseConfig;

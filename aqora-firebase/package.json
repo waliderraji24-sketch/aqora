@@ -1,0 +1,17 @@
+{
+  "name": "aqora-firebase",
+  "version": "1.0.0",
+  "description": "Premium social platform powered by Firebase",
+  "private": true,
+  "scripts": {
+    "dev": "python -m http.server 3000",
+    "start": "python -m http.server 8080"
+  },
+  "keywords": [
+    "social",
+    "firebase",
+    "spa"
+  ],
+  "author": "AQORA Team",
+  "license": "MIT"
+}
