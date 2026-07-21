@@ -1,6 +1,7 @@
 'use server';
 
 import { NextResponse } from 'next/server';
+import { verifyFirebaseToken } from '../../../../lib/firebase-admin';
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -18,12 +19,13 @@ export async function POST(request: Request) {
 
   const name = email.split('@')[0] || 'مصمم';
   const token = `fake-token:${email}`;
+  const verifiedUser = await verifyFirebaseToken(token);
 
   return NextResponse.json({
-    token,
+    token: verifiedUser ? `firebase:${verifiedUser.uid}` : token,
     user: {
-      name,
-      email,
+      name: verifiedUser?.name ?? name,
+      email: verifiedUser?.email ?? email,
     },
   });
 }

@@ -3,8 +3,8 @@
 import BottomNav from '../../components/BottomNav';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getSession, getStoredUser, updateUserProfile, saveSession, StoredUser } from '../../lib/auth';
-import { isFirebaseAvailable, saveDocument } from '../../lib/firebase';
+import { getSession, getStoredUser, updateUserProfile, saveSession } from '../../lib/auth';
+import { ensureUserProfile, getProfiles } from '../../lib/social';
 
 export default function ProfilePage() {
   const [authorized, setAuthorized] = useState(false);
@@ -14,6 +14,7 @@ export default function ProfilePage() {
   const [bio, setBio] = useState('');
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [profiles, setProfiles] = useState<any[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export default function ProfilePage() {
     setPhone(storedUser?.phone ?? '');
     setBio(storedUser?.bio ?? '');
     setAuthorized(true);
+    getProfiles().then(setProfiles).catch(() => setProfiles([]));
   }, [router]);
 
   if (!authorized) {
@@ -92,14 +94,7 @@ export default function ProfilePage() {
                   if (session) {
                     saveSession({ name: storedUser.name, email: storedUser.email, joinedAt: storedUser.joinedAt }, session.token);
                   }
-                  if (isFirebaseAvailable()) {
-                    try {
-                      const id = email.replace(/[@.]/g, '_');
-                      await saveDocument('users', id, { name: storedUser.name, email: storedUser.email, phone: storedUser.phone, bio: storedUser.bio, joinedAt: storedUser.joinedAt });
-                    } catch (e) {
-                      console.warn('Failed saving profile to Firestore', e);
-                    }
-                  }
+                  await ensureUserProfile({ name: storedUser.name, email: storedUser.email, phone: storedUser.phone, bio: storedUser.bio, joinedAt: storedUser.joinedAt });
                   setSuccess('تم حفظ البيانات بنجاح');
                 } catch (e) {
                   if (e instanceof Error) setError(e.message);

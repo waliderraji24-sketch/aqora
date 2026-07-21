@@ -12,6 +12,7 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "firebase": "^12.15.0",
+    "firebase-admin": "^13.0.0",
     "jsonwebtoken": "^9.0.0",
     "mongodb": "^7.3.0",
     "mongodb-memory-server": "^11.2.0",

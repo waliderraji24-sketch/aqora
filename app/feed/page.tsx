@@ -3,14 +3,14 @@
 import BottomNav from '../../components/BottomNav';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createPost, getStoredPosts, FeedPost, incrementPostViews } from '../../lib/data';
-import { isFirebaseAvailable, getCollection } from '../../lib/firebase';
-import { AuthUser, getSession } from '../../lib/auth';
+import { getSession } from '../../lib/auth';
+import { addCommentToPost, createPost, deletePost, incrementPostViews, listenPosts, SocialComment, SocialPost, toggleLikePost, toggleSavePost } from '../../lib/social';
 
 export default function FeedPage() {
   const [authorized, setAuthorized] = useState(false);
-  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [posts, setPosts] = useState<SocialPost[]>([]);
   const [content, setContent] = useState('');
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const router = useRouter();
 
@@ -21,25 +21,8 @@ export default function FeedPage() {
       return;
     }
     setAuthorized(true);
-    let unsub: (() => void) | null = null;
-    async function init() {
-      if (isFirebaseAvailable()) {
-        try {
-          const fb = await import('../../lib/firebase');
-          unsub = fb.listenCollection('posts', (docs: any[]) => setPosts(docs as FeedPost[]));
-          // show local posts until remote updates arrive
-          setPosts(getStoredPosts());
-          return;
-        } catch (e) {
-          console.warn('Failed to load posts from Firestore', e);
-        }
-      }
-      setPosts(getStoredPosts());
-    }
-    init();
-    return () => {
-      if (unsub) unsub();
-    };
+    const unsub = listenPosts((docs) => setPosts(docs));
+    return () => unsub();
   }, [router]);
 
   const handlePublish = async () => {
@@ -92,24 +75,32 @@ export default function FeedPage() {
             <div key={post.id} className="rounded-[2rem] border border-orange-200 bg-white p-6 shadow-sm">
               <div className="flex flex-col gap-3 text-right sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <div className="text-lg font-semibold text-gray-900">{post.author}</div>
-                  <div className="text-sm text-gray-500">{post.timestamp}</div>
+                  <div className="text-lg font-semibold text-gray-900">{post.authorName}</div>
+                  <div className="text-sm text-gray-500">{new Date(post.createdAt).toLocaleString('ar-EG')}</div>
                 </div>
-                <div className="text-sm text-gray-500 text-left sm:text-right">{post.email}</div>
+                <div className="text-sm text-gray-500 text-left sm:text-right">{post.authorEmail}</div>
               </div>
               <p className="mt-4 text-gray-800 whitespace-pre-wrap">{post.content}</p>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
-                <span>عدد المشاهدات: {post.views}</span>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const updated = await incrementPostViews(post.id);
-                    setPosts(updated as FeedPost[]);
-                  }}
-                  className="rounded-full bg-orange-50 px-4 py-2 text-orange-700 transition hover:bg-orange-100"
-                >
-                  شاهد المنشور
-                </button>
+                <span>عدد المشاهدات: {post.views ?? 0}</span>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={async () => { const session = getSession(); if (session) { await toggleLikePost(post.id, session.user.email); } }} className="rounded-full bg-orange-50 px-4 py-2 text-orange-700 transition hover:bg-orange-100">{(post.likes ?? []).length} إعجاب</button>
+                  <button type="button" onClick={async () => { await incrementPostViews(post.id); }} className="rounded-full bg-orange-50 px-4 py-2 text-orange-700 transition hover:bg-orange-100">شاهد</button>
+                  <button type="button" onClick={async () => { const session = getSession(); if (session) { await toggleSavePost(post.id, session.user.email); } }} className="rounded-full bg-orange-50 px-4 py-2 text-orange-700 transition hover:bg-orange-100">حفظ</button>
+                  <button type="button" onClick={async () => { await deletePost(post.id); }} className="rounded-full bg-red-50 px-4 py-2 text-red-700 transition hover:bg-red-100">حذف</button>
+                </div>
+              </div>
+              <div className="mt-4 rounded-2xl border border-orange-100 bg-orange-50/60 p-3">
+                {(post.comments ?? []).map((comment) => (
+                  <div key={comment.id} className="mb-2 rounded-xl bg-white px-3 py-2 text-sm text-gray-700">
+                    <div className="font-semibold text-gray-900">{comment.authorName}</div>
+                    <div>{comment.text}</div>
+                  </div>
+                ))}
+                <div className="mt-2 flex gap-2">
+                  <input value={commentDrafts[post.id] ?? ''} onChange={(e) => setCommentDrafts((current) => ({ ...current, [post.id]: e.target.value }))} placeholder="اكتب تعليقاً..." className="flex-1 rounded-full border border-orange-200 px-3 py-2 text-sm" />
+                  <button type="button" onClick={async () => { const session = getSession(); const text = commentDrafts[post.id]?.trim(); if (!session || !text) return; await addCommentToPost(post.id, session.user, text); setCommentDrafts((current) => ({ ...current, [post.id]: '' })); }} className="rounded-full bg-orange-600 px-4 py-2 text-sm text-white">تعليق</button>
+                </div>
               </div>
             </div>
           ))}

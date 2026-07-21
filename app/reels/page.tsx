@@ -3,13 +3,16 @@
 import BottomNav from '../../components/BottomNav';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getReelsViews, incrementReelsViews } from '../../lib/data';
 import { getSession } from '../../lib/auth';
+import { createReel, incrementReelViews, listenReels, SocialReel, toggleLikeReel } from '../../lib/social';
 
 export default function ReelsPage() {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
-  const [views, setViews] = useState(0);
+  const [reels, setReels] = useState<SocialReel[]>([]);
+  const [caption, setCaption] = useState('');
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [status, setStatus] = useState('');
   const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
@@ -20,7 +23,8 @@ export default function ReelsPage() {
     }
 
     setAuthorized(true);
-    setViews(getReelsViews());
+    const unsub = listenReels((docs) => setReels(docs));
+    return () => unsub();
   }, [router]);
 
   if (!authorized) {
@@ -29,47 +33,36 @@ export default function ReelsPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 p-4 pb-28 text-white">
-      <div className="mx-auto max-w-md">
-        <div className="rounded-[2.5rem] overflow-hidden bg-slate-900 shadow-2xl">
-          <div className="relative h-[700px] bg-slate-800">
-            <div className="absolute inset-0 flex items-center justify-center text-[6rem] text-white/70">▶</div>
-            <div className="absolute top-4 right-4 rounded-full bg-black/60 px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-200">
-              ريلز
-            </div>
-            <div className="absolute bottom-6 left-6 space-y-3 text-white">
-              <div className="text-sm font-semibold">موسيقى: صوت حقيقية</div>
-              <div className="text-xs text-slate-300">المشاهدات: {views}</div>
-            </div>
-          </div>
-          <div className="p-6 bg-slate-950">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold">ريلاز</h1>
-                <p className="mt-2 text-sm text-slate-400">واجهة تصميم بسيطة تشبه تيك توك.</p>
-              </div>
-              <div className="space-y-3 text-right">
-                <button className="h-12 w-12 rounded-full bg-white/10 text-xl">❤</button>
-                <button className="h-12 w-12 rounded-full bg-white/10 text-xl">💬</button>
-                <button className="h-12 w-12 rounded-full bg-white/10 text-xl">🔁</button>
-              </div>
-            </div>
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <button
-                type="button"
-                onClick={() => {
-                  setViews(incrementReelsViews());
-                  setPlaying(true);
-                }}
-                className="rounded-full bg-orange-600 px-6 py-3 text-white font-semibold hover:bg-orange-700"
-              >
-                {playing ? 'تشغيل...' : 'شاهد الآن'}
-              </button>
-              <div className="text-sm text-slate-300">
-                {playing ? 'الفيديو يعرض الآن ضمن الواجهة.' : 'اضغط للمشاهدة وزيادة عداد المشاهدات.'}
-              </div>
-            </div>
+      <div className="mx-auto max-w-4xl space-y-6">
+        <div className="rounded-[2.5rem] border border-white/10 bg-slate-900 p-5 shadow-2xl">
+          <h1 className="text-2xl font-bold">ريلز AQORA</h1>
+          <p className="mt-2 text-sm text-slate-400">ارفع فيديوهاتك وقم بمشاركة الريلز مع المستخدمين الآخرين.</p>
+          <div className="mt-4 space-y-3">
+            <input value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="اكتب وصف الريل" className="w-full rounded-full border border-white/10 bg-slate-800 px-4 py-3 text-sm" />
+            <input type="file" accept="video/*" onChange={(e) => setVideoFile(e.target.files?.[0] ?? null)} className="w-full rounded-full border border-white/10 bg-slate-800 px-4 py-3 text-sm" />
+            <button type="button" onClick={async () => { const session = getSession(); if (!session || !videoFile) return; setStatus('جارٍ رفع الريل...'); const reel = await createReel(session.user, caption, videoFile); setReels((current) => [reel, ...current]); setCaption(''); setVideoFile(null); setStatus('تم رفع الريل بنجاح'); }} className="rounded-full bg-orange-600 px-6 py-3 text-white font-semibold hover:bg-orange-700">نشر الريل</button>
+            {status ? <div className="text-sm text-orange-400">{status}</div> : null}
           </div>
         </div>
+        {reels.map((reel) => (
+          <div key={reel.id} className="rounded-[2.5rem] overflow-hidden bg-slate-900 shadow-2xl">
+            <div className="relative h-[650px] bg-slate-800">
+              <div className="absolute inset-0 flex items-center justify-center text-[6rem] text-white/70">▶</div>
+              <div className="absolute top-4 right-4 rounded-full bg-black/60 px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-200">ريلز</div>
+              <div className="absolute bottom-6 left-6 space-y-3 text-white">
+                <div className="text-sm font-semibold">{reel.authorName}</div>
+                <div className="text-xs text-slate-300">المشاهدات: {reel.views ?? 0}</div>
+              </div>
+            </div>
+            <div className="p-6 bg-slate-950">
+              <p className="text-sm text-slate-300">{reel.caption}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button type="button" onClick={async () => { const session = getSession(); if (session) await toggleLikeReel(reel.id, session.user.email); }} className="rounded-full bg-white/10 px-4 py-2 text-sm">{(reel.likes ?? []).length} إعجاب</button>
+                <button type="button" onClick={async () => { await incrementReelViews(reel.id); }} className="rounded-full bg-white/10 px-4 py-2 text-sm">مشاهدة</button>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
       <BottomNav />
     </div>

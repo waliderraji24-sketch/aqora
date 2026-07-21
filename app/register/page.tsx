@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { registerUser, saveSession } from '../../lib/auth';
 import { isFirebaseAvailable, signInWithGoogle } from '../../lib/firebase';
+import { ensureUserProfile } from '../../lib/social';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -13,32 +14,32 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      (async () => {
-        if (isFirebaseAvailable()) {
+      if (isFirebaseAvailable()) {
+        try {
+          const res = await (await import('../../lib/firebase')).signUpWithEmail(email, password);
           try {
-            const res = await (await import('../../lib/firebase')).signUpWithEmail(email, password);
-            // save display name in firestore users collection
-            try {
-              const id = email.replace(/[@.]/g, '_');
-              await (await import('../../lib/firebase')).saveDocument('users', id, { name, email: res.user.email, joinedAt: res.user.joinedAt });
-            } catch {}
-            saveSession(res.user, res.token);
-            router.push('/dashboard');
-            return;
-          } catch (e) {
-            // fall back to local register
-          }
+            await ensureUserProfile({ name, email: res.user.email, joinedAt: res.user.joinedAt });
+          } catch {}
+          saveSession(res.user, res.token);
+          router.push('/dashboard');
+          return;
+        } catch (e) {
+          if (e instanceof Error) throw e;
+          throw new Error('فشل تسجيل Firebase. تحقق من إعدادات المحاكي.');
         }
-        const result = registerUser(name, email, password);
-        saveSession(result.user, result.token);
-        router.push('/dashboard');
-      })();
+      }
+      const result = registerUser(name, email, password);
+      try {
+        await ensureUserProfile({ name: result.user.name, email: result.user.email, joinedAt: result.user.joinedAt });
+      } catch {}
+      saveSession(result.user, result.token);
+      router.push('/dashboard');
     } catch (e) {
       if (e instanceof Error) setError(e.message);
       else setError('حدث خطأ أثناء التسجيل');
@@ -53,6 +54,9 @@ export default function RegisterPage() {
     try {
       if (!isFirebaseAvailable()) throw new Error('Firebase not configured');
       const result = await signInWithGoogle();
+      try {
+        await ensureUserProfile({ name: result.user.name, email: result.user.email, joinedAt: result.user.joinedAt });
+      } catch {}
       saveSession(result.user, result.token);
       router.push('/dashboard');
     } catch (e) {

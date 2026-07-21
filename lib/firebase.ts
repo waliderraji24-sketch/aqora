@@ -7,9 +7,10 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   onAuthStateChanged as fbOnAuthStateChanged,
+  connectAuthEmulator,
 } from 'firebase/auth';
-import { getFirestore, collection, addDoc, getDocs, doc, setDoc } from 'firebase/firestore';
-import { getDoc, onSnapshot, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, getDocs, doc, setDoc, deleteDoc, onSnapshot, updateDoc, arrayUnion, serverTimestamp, connectFirestoreEmulator } from 'firebase/firestore';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL, connectStorageEmulator } from 'firebase/storage';
 
 type FirebaseConfig = {
   apiKey: string;
@@ -20,12 +21,27 @@ type FirebaseConfig = {
   appId?: string;
 };
 
-function getConfigFromEnv(): FirebaseConfig | null {
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  if (!apiKey || !authDomain || !projectId) return null;
-  return { apiKey, authDomain, projectId, storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET, messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID, appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID };
+const FALLBACK_FIREBASE_CONFIG: FirebaseConfig = {
+  apiKey: 'AIzaSyDJDDpkxzTrl9pbzScQy7mRFbO0kWTvhZw',
+  authDomain: 'aqora-28595165-beb5f.firebaseapp.com',
+  projectId: 'aqora-28595165-beb5f',
+  storageBucket: 'aqora-28595165-beb5f.firebasestorage.app',
+  messagingSenderId: '168023435195',
+  appId: '1:168023435195:web:71362611b25e8219a4869e',
+};
+
+function getConfigFromEnv(): FirebaseConfig {
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || FALLBACK_FIREBASE_CONFIG.apiKey;
+  const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || FALLBACK_FIREBASE_CONFIG.authDomain;
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || FALLBACK_FIREBASE_CONFIG.projectId;
+  return {
+    apiKey,
+    authDomain,
+    projectId,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || FALLBACK_FIREBASE_CONFIG.storageBucket,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || FALLBACK_FIREBASE_CONFIG.messagingSenderId,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || FALLBACK_FIREBASE_CONFIG.appId,
+  };
 }
 
 let appInitialized = false;
@@ -37,9 +53,32 @@ function initFirebase() {
   }
 
   const cfg = getConfigFromEnv();
-  if (!cfg) return null;
-
   const app = initializeApp(cfg);
+  // If running with the emulator flag, connect SDK to local emulators
+  try {
+    const emulatorEnabled =
+      typeof window !== 'undefined' &&
+      (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true' || window.location.hostname === 'localhost');
+
+    if (emulatorEnabled) {
+      const db = getFirestore();
+      // default emulator ports
+      const firestoreHost = process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_HOST || 'localhost';
+      const firestorePort = Number(process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT || '8080');
+      connectFirestoreEmulator(db, firestoreHost, firestorePort);
+
+      const storage = getStorage(app);
+      const storageHost = process.env.NEXT_PUBLIC_STORAGE_EMULATOR_HOST || 'localhost';
+      const storagePort = Number(process.env.NEXT_PUBLIC_STORAGE_EMULATOR_PORT || '9199');
+      connectStorageEmulator(storage, storageHost, storagePort);
+
+      const auth = getAuth(app);
+      const authUrl = process.env.NEXT_PUBLIC_AUTH_EMULATOR_URL || 'http://localhost:9099';
+      connectAuthEmulator(auth, authUrl, { disableWarnings: true });
+    }
+  } catch (e) {
+    // ignore emulator hookup failures
+  }
   appInitialized = true;
   return app;
 }
@@ -49,7 +88,7 @@ export function isFirebaseAvailable() {
   try {
     if (getApps().length > 0) return true;
   } catch {}
-  return !!getConfigFromEnv();
+  return !!getConfigFromEnv().projectId;
 }
 
 export async function signInWithGoogle() {
@@ -186,5 +225,28 @@ export async function appendToArrayField(collectionName: string, id: string, fie
   if (!db) throw new Error('Firestore not available');
   const ref = doc(db, collectionName, id);
   await updateDoc(ref, { [field]: arrayUnion(value), updatedAt: serverTimestamp() });
+}
+
+export async function updateDocument(collectionName: string, id: string, data: any) {
+  const db = getFirestoreClient();
+  if (!db) throw new Error('Firestore not available');
+  const ref = doc(db, collectionName, id);
+  await setDoc(ref, { ...data, updatedAt: new Date().toISOString() }, { merge: true });
+}
+
+export async function deleteDocument(collectionName: string, id: string) {
+  const db = getFirestoreClient();
+  if (!db) throw new Error('Firestore not available');
+  await deleteDoc(doc(db, collectionName, id));
+}
+
+export async function uploadFileToStorage(path: string, file: File | Blob) {
+  if (typeof window === 'undefined') throw new Error('Client only');
+  const app = initFirebase();
+  if (!app) throw new Error('Firebase not configured');
+  const storage = getStorage(app);
+  const storageRef = ref(storage, path);
+  await uploadBytesResumable(storageRef, file);
+  return getDownloadURL(storageRef);
 }
 
