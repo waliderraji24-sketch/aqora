@@ -56,7 +56,8 @@ function initFirebase() {
   try {
     const emulatorEnabled =
       typeof window !== 'undefined' &&
-      (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true' || window.location.hostname === 'localhost');
+      process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true' &&
+      window.location.hostname === 'localhost';
 
     if (emulatorEnabled) {
       const db = getFirestore();
