@@ -22,6 +22,9 @@ const quickLinks = [
   { href: '/reels', icon: '🎥', title: 'ريلز', desc: 'فيديوهات قصيرة مثل تيك توك' },
   { href: '/chat', icon: '💬', title: 'الرسائل', desc: 'دردشة واتساب-مستوحاة' },
   { href: '/profile', icon: '👤', title: 'الملف الشخصي', desc: 'بطاقة شخصية احترافية' },
+  { href: '/search', icon: '🔎', title: 'البحث', desc: 'اكتشف المنشورات والأشخاص' },
+  { href: '/notifications', icon: '🔔', title: 'الإشعارات', desc: 'تابع التحديثات والرسائل' },
+  { href: '/friends', icon: '🤝', title: 'الأصدقاء', desc: 'إدارة المتابعين والصداقة' },
 ];
 
 const stories = [
@@ -185,7 +188,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {quickLinks.map((item) => (
             <Link
               key={item.href}
