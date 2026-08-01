@@ -21,26 +21,22 @@ type FirebaseConfig = {
   appId?: string;
 };
 
-const FALLBACK_FIREBASE_CONFIG: FirebaseConfig = {
-  apiKey: 'AIzaSyDJDDpkxzTrl9pbzScQy7mRFbO0kWTvhZw',
-  authDomain: 'aqora-28595165-beb5f.firebaseapp.com',
-  projectId: 'aqora-28595165-beb5f',
-  storageBucket: 'aqora-28595165-beb5f.firebasestorage.app',
-  messagingSenderId: '168023435195',
-  appId: '1:168023435195:web:71362611b25e8219a4869e',
-};
+function getConfigFromEnv(): FirebaseConfig | null {
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim();
+  const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN?.trim();
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim();
 
-function getConfigFromEnv(): FirebaseConfig {
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || FALLBACK_FIREBASE_CONFIG.apiKey;
-  const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || FALLBACK_FIREBASE_CONFIG.authDomain;
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || FALLBACK_FIREBASE_CONFIG.projectId;
+  if (!apiKey || !authDomain || !projectId) {
+    return null;
+  }
+
   return {
     apiKey,
     authDomain,
     projectId,
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || FALLBACK_FIREBASE_CONFIG.storageBucket,
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || FALLBACK_FIREBASE_CONFIG.messagingSenderId,
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || FALLBACK_FIREBASE_CONFIG.appId,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim(),
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID?.trim(),
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID?.trim(),
   };
 }
 
@@ -53,6 +49,8 @@ function initFirebase() {
   }
 
   const cfg = getConfigFromEnv();
+  if (!cfg) return null;
+
   const app = initializeApp(cfg);
   // If running with the emulator flag, connect SDK to local emulators
   try {
@@ -88,7 +86,7 @@ export function isFirebaseAvailable() {
   try {
     if (getApps().length > 0) return true;
   } catch {}
-  return !!getConfigFromEnv().projectId;
+  return !!getConfigFromEnv()?.projectId;
 }
 
 export async function signInWithGoogle() {
