@@ -9,13 +9,13 @@ export default function BottomNav() {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-orange-200 shadow-2xl">
-      <div className="flex justify-around items-center max-w-7xl mx-auto">
+    <div className="fixed bottom-0 left-0 right-0 border-t-2 border-orange-200 bg-white shadow-2xl">
+      <div className="mx-auto flex max-w-7xl items-center justify-around">
         {navItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            className="flex-1 flex items-center justify-center py-4 hover:bg-orange-50 transition duration-200"
+            className="flex flex-1 items-center justify-center py-4 transition duration-200 hover:bg-orange-50"
             title={item.label}
           >
             <span className="text-4xl transition duration-200">{item.icon}</span>
