@@ -4,7 +4,7 @@ import BottomNav from '../../components/BottomNav';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSession } from '../../lib/auth';
-import { followUser, getFollowStatus, listenPresence, listenUsers, SocialPresence, SocialUserProfile } from '../../lib/social';
+import { createConversation, createNotification, followUser, getFollowStatus, listenPresence, listenUsers, SocialPresence, SocialUserProfile } from '../../lib/social';
 
 export default function FriendsPage() {
   const router = useRouter();
@@ -47,6 +47,14 @@ export default function FriendsPage() {
     setFollowState((current) => ({ ...current, [targetEmail]: Boolean(nextStatus) }));
   };
 
+  const handleStartChat = async (targetEmail: string) => {
+    const session = getSession();
+    if (!session) return;
+    const conversation = await createConversation(session.user.email, targetEmail);
+    await createNotification(targetEmail, 'رسالة جديدة', `${session.user.name} بدأ محادثة معك`);
+    router.push(`/chat?conversation=${conversation.id}`);
+  };
+
   if (!authorized) {
     return <div className="min-h-screen flex items-center justify-center text-gray-900">جارٍ التحقق...</div>;
   }
@@ -69,13 +77,22 @@ export default function FriendsPage() {
                         <div className="text-sm text-slate-500">{user.email}</div>
                         <div className="mt-1 text-xs text-slate-500">{isOnline ? 'متصل الآن' : 'غير متصل حالياً'}</div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleFollow(user.email)}
-                        className={`rounded-full px-4 py-2 text-sm font-bold ${isFollowing ? 'bg-slate-900 text-white' : 'bg-orange-600 text-white'}`}
-                      >
-                        {isFollowing ? 'إلغاء المتابعة' : 'متابعة'}
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleFollow(user.email)}
+                          className={`rounded-full px-4 py-2 text-sm font-bold ${isFollowing ? 'bg-slate-900 text-white' : 'bg-orange-600 text-white'}`}
+                        >
+                          {isFollowing ? 'إلغاء المتابعة' : 'متابعة'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleStartChat(user.email)}
+                          className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white"
+                        >
+                          محادثة
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );

@@ -1,8 +1,8 @@
 'use client';
 
 import BottomNav from '../../components/BottomNav';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getSession } from '../../lib/auth';
 import {
   createCallInvite,
@@ -20,8 +20,9 @@ import {
   SocialUserProfile,
 } from '../../lib/social';
 
-export default function ChatPage() {
+function ChatPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [authorized, setAuthorized] = useState(false);
   const [users, setUsers] = useState<SocialUserProfile[]>([]);
   const [conversations, setConversations] = useState<SocialConversation[]>([]);
@@ -43,9 +44,13 @@ export default function ChatPage() {
     setPresence(session.user.email, true);
     const stopUsers = listenUsers((docs) => setUsers(docs.filter((user) => user.email !== session.user.email)));
     const stopConversations = listenConversations((docs) => {
-      setConversations(docs.filter((conversation) => (conversation.participants ?? []).includes(session.user.email)));
-      if (!selectedConversationId && docs.length > 0) {
-        setSelectedConversationId(docs[0].id);
+      const filtered = docs.filter((conversation) => (conversation.participants ?? []).includes(session.user.email));
+      setConversations(filtered);
+      const requestedConversationId = searchParams.get('conversation');
+      if (requestedConversationId && filtered.some((conversation) => conversation.id === requestedConversationId)) {
+        setSelectedConversationId(requestedConversationId);
+      } else if (!selectedConversationId && filtered.length > 0) {
+        setSelectedConversationId(filtered[0].id);
       }
     });
     const stopPresence = listenPresence((docs) => setPresenceState(docs));
@@ -57,7 +62,7 @@ export default function ChatPage() {
       stopNotifications();
       setPresence(session.user.email, false);
     };
-  }, [router]);
+  }, [router, searchParams, selectedConversationId]);
 
   const selectedConversation = conversations.find((conversation) => conversation.id === selectedConversationId);
 
@@ -189,5 +194,13 @@ export default function ChatPage() {
       </div>
       <BottomNav />
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-gray-900">جارٍ التحقق...</div>}>
+      <ChatPageContent />
+    </Suspense>
   );
 }
